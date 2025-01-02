@@ -30,9 +30,11 @@ public class CJXLui extends javax.swing.JFrame {
     //public static String CJXL_pre = "";
     /* CJXL command post arguments */
     public static String CJXL_post = "";
-    /* How many times Pre button pressed*/
+    /* How many times  button pressed*/
     public int PreButtonPressed = 0;
     public int PostButtonPressed = 0;
+    public int TargetButtonPressed = 0;
+    
     /* CJXL target folder */
     public static String CJXL_target = "";
     /* CJXL source folder */
@@ -338,13 +340,13 @@ public class CJXLui extends javax.swing.JFrame {
         // TODO add your handling code here:
         PreButtonPressed = 0;
         if (PostButtonPressed == 0){
-            button_cjxlpost.setText("Save Command Postfix");
+            button_cjxlpost.setText("Save CJXL arguments");
             jLabel1.setText("Post argument");
             jTextField1.setText(CJXL_post);
             jPanel1.setVisible(true);
             PostButtonPressed = PostButtonPressed + 1;
         } else {
-            button_cjxlpost.setText("Set Command Postfix");
+            button_cjxlpost.setText("Set CJXL arguments");
             CJXL_post = jTextField1.getText();
             jPanel1.setVisible(false);
             PostButtonPressed = 0;
@@ -353,6 +355,7 @@ public class CJXLui extends javax.swing.JFrame {
 
     private void button_selectTargetActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_button_selectTargetActionPerformed
         // TODO add your handling code here:
+        TargetButtonPressed = TargetButtonPressed + 1;
         FileChooser_CJXL.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);   // Set to select folder only
         int returnVal = FileChooser_CJXL.showOpenDialog(this); 
         if (returnVal == FileChooser_CJXL.APPROVE_OPTION) {
@@ -418,7 +421,7 @@ public class CJXLui extends javax.swing.JFrame {
                             
                 /* Parse final command */
                 /* Final command looks like "<CJXL Path>\cjxl.exe <Source path>\Source file.jpg <Target path>\Target file.jxl" */
-                if (CJXL_target.equals("")) { CJXL_target = CJXL_source ; }   //If no target folder specified use source folder as target folder
+                if (TargetButtonPressed == 0) { CJXL_target = CJXL_source ; }   //If no target folder specified use source folder as target folder
                 String final_command = command + "\"" + CJXL_source + model.getValueAt(x, NORMAL) 
                         + "\" \"" + CJXL_target + outfile + "\""; 
                 if (!CJXL_post.equals("")){ final_command = final_command  + " \"\"" + CJXL_post + "\"\"";} //Add argument at the end 
@@ -467,7 +470,7 @@ public class CJXLui extends javax.swing.JFrame {
                     
                     if (check_restoredates.isSelected() == true){   //Run only if restoredate checkbox selected
                         try {
-                            System.out.println("Powershell1 : " + attr_command1 + "\nCommand2 :" + attr_command2);
+                            System.out.println("Powershell : " + attr_command1 + "\nCommand2 :" + attr_command2);
                             Process attr_cmd = attr.start();
                         
                             attr_cmd.getOutputStream().flush();     //So that powershell command stops and not hang at waitFor()
