@@ -1,5 +1,7 @@
 # Simple-CJXL-front-end
-The simplest CJXL front end ever
+The simplest CJXL front end ever! 
+
+I suppose it is meant for Windows machines, but since it is Java so it might work with other Operating Systems. However delete original file and restore dates function will not be working since they use windows commands. To make it work in linux you can rename your CJXL binary to cjxl.exe, it might work, let me know!
 
 Having thousands of old images I want to convert to JXL using CJXL, I just wanted to use a front end to run the command CJXL.exe. Just a few clicks to convert without any arguments, but for some reason there were none. So here it is, a very simple front end using Java that uses CJXL.exe to convert your library of images into JXL. 
 
