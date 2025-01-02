@@ -17,11 +17,12 @@ And you are done! Start using!
 Steps to use:
 -------------
 3. Select source folder where images you want to convert are located
-4. Select target folder where you want the converted JXL files to be stored. If same as source folder then leave empty
-5. Select option to:
+4. Select target folder where you want the converted JXL files to be stored. If same as source folder then leave empty.
+   Please make sure you do not select Thumbs.db. This file causes the program to hang for some reason. 
+6. Select option to:
     - Delete original images after conversion (use with caution)
     - Restore Create and Modified date of source images to converted JXL files
-6. Convert away!
+7. Convert away!
 
 Disclaimer: Use at your own risk! I will not be held responsible of any negative outcomes, damage or loss of life or property caused directly or indirectly from this program. 
 However if you want, feel free to buy me a cup of coffee!
