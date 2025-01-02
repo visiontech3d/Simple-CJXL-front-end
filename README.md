@@ -22,3 +22,6 @@ Steps to use:
     - Delete original images after conversion (use with caution)
     - Restore Create and Modified date of source images to converted JXL files
 6. Convert away!
+
+Disclaimer: Use at your own risk! I will not be held responsible of any negative outcomes, damage or loss of life or property caused directly or indirectly from this program. 
+However if you want, feel free to buy me a cup of coffee!
