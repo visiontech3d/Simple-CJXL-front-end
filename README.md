@@ -25,4 +25,5 @@ Steps to use:
 7. Convert away!
 
 Disclaimer: Use at your own risk! I will not be held responsible of any negative outcomes, damage or loss of life or property caused directly or indirectly from this program. 
-However if you want, feel free to buy me a cup of coffee!
+However if you want, feel free to buy me a cup of coffee buy_me_a_coffee:visiontech3d!
+
