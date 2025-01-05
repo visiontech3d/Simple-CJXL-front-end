@@ -9,6 +9,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.file.Files;
 import java.util.Scanner;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -16,6 +17,10 @@ import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.table.DefaultTableModel;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.attribute.FileTime;
 
 
 /**
@@ -405,31 +410,102 @@ public class CJXLui extends javax.swing.JFrame {
         //Initialize command
         String command = "\"" + CJXL_loc + "\\cjxl.exe\" " ;
         
+        //If no target folder specified use source folder as target folder
+        if (TargetButtonPressed == 0) { CJXL_target = CJXL_source ; }   
+        
         //Start processing selected items
         //Process only if there is select items
         if (jTable1.getSelectedRowCount() > 0){
             //Loop all selected files in table
-            for (int x : jTable1.getSelectedRows()){
+            process: for (int x : jTable1.getSelectedRows()){
                 String infile = "" + model.getValueAt(x, NORMAL);    //Input file
             
+                //Initialize non standard latin unicode flag
+                int is_nonlatin_unicode = 0;
+                
                 /* Get outfile name */
                 //Get location of file extension 
                 int extension = infile.lastIndexOf(".");
-                            
+                System.out.println("Extension :" + extension);
+                
                 //Replace output file name with *.jxl
-                String outfile = infile.substring(0, extension) + ".jxl";
+                String outfile ;
+                if (extension > 0 && infile.substring(extension, infile.length()).length() < 5){       //In case source file has no extension, try to encompass cases like .jpeg , .jpg. Assume is not extension if length after final '.' is more than 5
+                    outfile = infile.substring(0, extension) + ".jxl";
+                    System.out.println("Outfile is :" + outfile);
+                }    
+                else {outfile = infile + ".jxl";}
+                
+                //Return codes for temporary rename target operation 
+                int mv_target_return = 1;
+                //Return code for delete operation
+                int del_target_return = 1;
+                //Return code for Convert command 
+                int cmd_return = 1;
+                
+                //Check if target jxl file already exist
+                if (!(CJXL_target.equals(CJXL_source) && extension > 0
+                        && infile.substring(extension, infile.length()).equals(".jxl"))){
+                    //Get full path and file name
+                    String full_path = CJXL_target + outfile ;
+                    System.out.println("Full path: " + full_path);
+                    
+                    //Skip file if output already exists
+                    Path temp_path = Paths.get(full_path);
+                    if (Files.exists(temp_path)) {
+                        System.out.println("JXL file exists, skipping : " + full_path);
+                        model.setValueAt("Fail", x, 1);
+                        continue ;
+                    }
+                }
+                
+                //Temporarily copy input file if name has non standard latin unicode like chinese arabic etc.
+                for (int y = 0; y < infile.length(); y++ ){
+                    if (!Character.UnicodeBlock.of(infile.charAt(y)).equals(Character.UnicodeBlock.BASIC_LATIN)){
+                        System.out.println("Non standard unicode found, copying...");
+                        //Rename file and set flag for use when renaming back    
+                        is_nonlatin_unicode = 1;
+                        
+                        //Copy source file
+                        Path source = Paths.get(CJXL_source + infile);
+                        Path target = Paths.get(CJXL_target + outfile);
+                        try {
+                            //Delete previous temporary files first stopped because of errors
+                            if (Files.exists(source.resolveSibling("nobodywouldnametheirfilethis000555"))) {
+                                Files.delete(source.resolveSibling("nobodywouldnametheirfilethis000555"));
+                            }
+                            if (Files.exists(target.resolveSibling("nobodywouldnametheirfilethis000555.jxl"))) {
+                                Files.delete(target.resolveSibling("nobodywouldnametheirfilethis000555.jxl"));
+                            }
                             
+                            //Copy 
+                            Files.copy(source, source.resolveSibling("nobodywouldnametheirfilethis000555"));
+                            
+                            //Copy source file attributes as well in case need to copy later
+                            BasicFileAttributes src_attr = Files.readAttributes(source, BasicFileAttributes.class);
+                            Files.setAttribute(source.resolveSibling("nobodywouldnametheirfilethis000555"), "creationTime", src_attr.creationTime());
+                            Files.setAttribute(source.resolveSibling("nobodywouldnametheirfilethis000555"), "lastModifiedTime", src_attr.lastModifiedTime());
+                            
+                            //Temporarily reassign infile and outfile for CJXL and restore dates steps
+                            infile = "nobodywouldnametheirfilethis000555";
+                            outfile = infile + ".jxl";
+                            
+                            break ;
+                        } catch (IOException ex) {
+                            System.out.println("Special unicode file could not be duplicated : " + CJXL_source + infile);
+                            model.setValueAt("Fail", x, 1);
+                            continue process;       //Skip to next file in table
+                        }
+                    } 
+                }
+                                
                 /* Parse final command */
                 /* Final command looks like "<CJXL Path>\cjxl.exe <Source path>\Source file.jpg <Target path>\Target file.jxl" */
-                if (TargetButtonPressed == 0) { CJXL_target = CJXL_source ; }   //If no target folder specified use source folder as target folder
-                String final_command = command + "\"" + CJXL_source + model.getValueAt(x, NORMAL) 
+                String final_command = command + "\"" + CJXL_source + infile 
                         + "\" \"" + CJXL_target + outfile + "\""; 
                 if (!CJXL_post.equals("")){ final_command = final_command  + " \"\"" + CJXL_post + "\"\"";} //Add argument at the end 
                 System.out.println("Command :" + final_command);
             
-                //Store command return code
-                int cmd_return = 1;
-                
                 /* Run command */
                 //Shamelessly copied from StackOverflow stackoverflow.com/users/48503/luke-woodward
                 ProcessBuilder build = new ProcessBuilder(final_command);
@@ -452,49 +528,70 @@ public class CJXLui extends javax.swing.JFrame {
                     } catch (InterruptedException ex) {
                         Logger.getLogger(CJXLui.class.getName()).log(Level.SEVERE, null, ex);
                     }
-                    //Get return value and update table of success
-                    if (cmd_return == 0){
-                        model.setValueAt("OK", x, 1);
-                    }else {
-                        model.setValueAt("Fail", x, 1);
-                    }
-                    
+                                        
                     //Restore create and modified date to new JXL file
-                    String attr_command1 = "(Get-Item \'" + CJXL_target + outfile + "\').LastWriteTime = (Get-Item \'" 
-                            + CJXL_source + infile + "\').LastWriteTime; ";
-                    String attr_command2 = "(Get-Item \'" + CJXL_target + outfile + "\').CreationTime = (Get-Item \'" 
-                            + CJXL_source + infile + "\').CreationTime; ";
-                    ProcessBuilder attr = new ProcessBuilder("Powershell.exe", "-command", attr_command1, ";", attr_command2, ";", "exit");
-                    attr.redirectErrorStream(true);
                     int attr_exit = 1;  //Get powershell exit value
                     
                     if (check_restoredates.isSelected() == true){   //Run only if restoredate checkbox selected
+                        Path source = Paths.get(CJXL_source + infile);
+                        Path target = Paths.get(CJXL_target + outfile);
+                        
+                        BasicFileAttributes src_attr = Files.readAttributes(source, BasicFileAttributes.class);
                         try {
-                            System.out.println("Powershell : " + attr_command1 + "\nCommand2 :" + attr_command2);
-                            Process attr_cmd = attr.start();
-                        
-                            attr_cmd.getOutputStream().flush();     //So that powershell command stops and not hang at waitFor()
-                            attr_cmd.getOutputStream().close();     //So that powershell command stops and not hang at waitFor()
-                        
-                            //Get process return code
-                            try {
-                                attr_exit = attr_cmd.waitFor();
-                                System.out.println("Attr exit: " + attr_exit);
-                            } catch (InterruptedException ex) {
-                                System.out.println("An error occurred.");
-                                ex.printStackTrace();
-                            }
-                        }catch (IOException e){
-                            System.out.println("An error occurred.");
-                            e.printStackTrace();
+                            
+                            Files.setAttribute(target, "creationTime", src_attr.creationTime());
+                            Files.setAttribute(target, "lastModifiedTime", src_attr.lastModifiedTime());
+                            attr_exit = 0;
+                        } catch (IOException ex) {
+                            attr_exit = 1;                          //Set flag to fail
+                            System.out.println("Cannot restore dates : ");
+                            ex.printStackTrace();
                         }
                     } else {
                         attr_exit = 0;
                     }
                     
+                    //Rename the file back to their non standard latin unicode
+                    if (is_nonlatin_unicode == 1){
+                        //Rename back to original file name 
+                        infile = "" + model.getValueAt(x, NORMAL);              //Restore original infile
+                        
+                        //Rename original outfile same as defined in beginning of function
+                        if (extension > 0 && infile.substring(extension, infile.length()).length() < 5){       
+                            outfile = infile.substring(0, extension) + ".jxl";
+                            System.out.println("Outfile is :" + outfile);
+                        }    
+                        else {outfile = infile + ".jxl";}
+                        
+                        System.out.println("Renaming files back: " + infile + " " + outfile);
+                        
+                        //Rename target file, delete temporary file
+                        Path source = Paths.get(CJXL_source + infile);
+                        Path target = Paths.get(CJXL_target + outfile);
+                        
+                        try {
+                            //Delete source file if JXL. Otherwise renaming temporary target to itself will fail
+                            if (extension > 0 && infile.substring(extension, infile.length()).equals(".jxl")){Files.delete(source);}  
+                            
+                            Files.move(target.resolveSibling("nobodywouldnametheirfilethis000555.jxl"), target);
+                            Files.delete(source.resolveSibling("nobodywouldnametheirfilethis000555"));
+                            //Temporarily reassign infile and outfile for CJXL and restore dates steps
+                            mv_target_return = 0;
+                            
+                        } catch (IOException ex) {
+                            System.out.println("Special unicode file could not be moved : " + CJXL_target + outfile);
+                            mv_target_return = 1;
+                            
+                        }
+                    } else {
+                        mv_target_return = 0;
+                    }
+                                        
                     //Delete original files
                     //Only if CJXL.exe, date attribute set was successful and delete checkbox selected
-                    if(cmd_return == 0 && attr_exit == 0 && check_delete.isSelected()){
+                    //Added check for JXL file input because otherwise will delete original JXL file
+                    if(cmd_return == 0 && attr_exit == 0 && check_delete.isSelected() && mv_target_return == 0
+                            && ((extension < 0 || !infile.substring(extension, infile.length()).equals(".jxl")) || (infile.substring(extension, infile.length()).equals(".jxl") && !CJXL_source.equals(CJXL_target)))){     //if file is JXL and target and source not the same folder
                         final_command = "\"" + CJXL_source + model.getValueAt(x, NORMAL) + "\"";
                         ProcessBuilder del = new ProcessBuilder("cmd.exe", " /c " , "del", final_command);
                         del.redirectErrorStream(true);
@@ -512,9 +609,22 @@ public class CJXLui extends javax.swing.JFrame {
                         }catch (IOException e){
                                 System.out.println("An error occurred.");
                                 e.printStackTrace();
+                                del_target_return = 1;
                             }
+                        
+                        del_target_return = 0;
+                    } else {
+                        del_target_return = 0;
                     }
-                }catch (IOException e){
+                    
+                    //Get return value and update table of success
+                    if (cmd_return == 0 && attr_exit == 0 && del_target_return == 0
+                            && (is_nonlatin_unicode == 0 || (is_nonlatin_unicode == 1 && mv_target_return == 0))){
+                        model.setValueAt("OK", x, 1);
+                    }else {
+                        model.setValueAt("Fail", x, 1);
+                    }
+                } catch (IOException e){
                     System.out.println("An error occurred.");
                     e.printStackTrace();
                 }
