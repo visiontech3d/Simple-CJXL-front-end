@@ -9,8 +9,9 @@ Steps to setup the first time:
 ------------------------------
 ![image](https://github.com/user-attachments/assets/6a87fac0-6173-41b1-bcab-245db2a15ea7)
 
-1. Select folder where CJXL.exe is located
-2. Set command argument. These are arguments that will be passed onto the command
+1. Obtain and install CJXL from https://github.com/libjxl/libjxl/releases
+3. Select folder where CJXL.exe is located
+4. Set command argument. These are arguments that will be passed onto the command
 
 And you are done! Start using!
 
