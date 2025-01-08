@@ -20,7 +20,6 @@ import javax.swing.table.DefaultTableModel;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.nio.file.attribute.FileTime;
 
 
 /**
@@ -199,17 +198,17 @@ public class CJXLui extends javax.swing.JFrame {
 
         jTable1.setModel(new javax.swing.table.DefaultTableModel(
             new Object [][] {
-                {"Steps 1 - 2 only for one time setup", ""},
-                {"1. Press Set CJXL Location and locate CJXL.exe", ""},
-                {"2. Press Set Command Prefix/Postfix if any", ""},
-                {"Regular Use", ""},
-                {"1. Press Select Target Folder to place new files", ""},
-                {"2. Press Select Source Folder to locate images to convert", ""},
-                {"3. Select images from table", ""},
-                {"4. Press Convert to convert selected images", ""}
+                {"Steps 1 - 2 only for one time setup", "", ""},
+                {"1. Press Set CJXL Location and locate CJXL.exe", "", ""},
+                {"2. Press Set Command Prefix/Postfix if any", "", ""},
+                {"Regular Use", "", ""},
+                {"1. Press Select Target Folder to place new files", "", ""},
+                {"2. Press Select Source Folder to locate images to convert", "", ""},
+                {"3. Select images from table", "", ""},
+                {"4. Press Convert to convert selected images", "", ""}
             },
             new String [] {
-                "File", "OK?"
+                "File", "Ext", "OK?"
             }
         ));
         jScrollPane1.setViewportView(jTable1);
@@ -392,9 +391,17 @@ public class CJXLui extends javax.swing.JFrame {
             File[] listOfFiles = folder.listFiles();
             for (File file2 : listOfFiles) {
                 if (file2.isFile()) {
-                    model.addRow(new Object[]{file2.getName(), null, false, false});
+                    //Get extension if any
+                    int ext_index = file2.getName().lastIndexOf(".");
+                    String ext = "";
+                    if (ext_index > 0 && file2.getName().substring(ext_index, file2.getName().length()).length() < 6){
+                        ext = file2.getName().substring(ext_index, file2.getName().length());
+                    }
+                    model.addRow(new Object[]{file2.getName(), ext, "", false});
                 }
             }
+            //Enable table sort 
+            jTable1.setAutoCreateRowSorter(true);
         } else {
               System.out.println("File access cancelled by user.");
         }         
@@ -418,8 +425,9 @@ public class CJXLui extends javax.swing.JFrame {
         if (jTable1.getSelectedRowCount() > 0){
             //Loop all selected files in table
             process: for (int x : jTable1.getSelectedRows()){
-                String infile = "" + model.getValueAt(x, NORMAL);    //Input file
-            
+                //String infile = "" + model.getValueAt(x, NORMAL);    //Input file
+                String infile = "" + model.getValueAt(jTable1.convertRowIndexToModel(x), NORMAL); 
+                
                 //Initialize non standard latin unicode flag
                 int is_nonlatin_unicode = 0;
                 
@@ -454,7 +462,7 @@ public class CJXLui extends javax.swing.JFrame {
                     Path temp_path = Paths.get(full_path);
                     if (Files.exists(temp_path)) {
                         System.out.println("JXL file exists, skipping : " + full_path);
-                        model.setValueAt("Fail", x, 1);
+                        model.setValueAt("Skip", jTable1.convertRowIndexToModel(x), 2);
                         continue ;
                     }
                 }
@@ -493,7 +501,7 @@ public class CJXLui extends javax.swing.JFrame {
                             break ;
                         } catch (IOException ex) {
                             System.out.println("Special unicode file could not be duplicated : " + CJXL_source + infile);
-                            model.setValueAt("Fail", x, 1);
+                            model.setValueAt("Fail", jTable1.convertRowIndexToModel(x), 2);
                             continue process;       //Skip to next file in table
                         }
                     } 
@@ -554,7 +562,7 @@ public class CJXLui extends javax.swing.JFrame {
                     //Rename the file back to their non standard latin unicode
                     if (is_nonlatin_unicode == 1){
                         //Rename back to original file name 
-                        infile = "" + model.getValueAt(x, NORMAL);              //Restore original infile
+                        infile = "" + model.getValueAt(jTable1.convertRowIndexToModel(x), NORMAL);              //Restore original infile
                         
                         //Rename original outfile same as defined in beginning of function
                         if (extension > 0 && infile.substring(extension, infile.length()).length() < 5){       
@@ -592,27 +600,20 @@ public class CJXLui extends javax.swing.JFrame {
                     //Added check for JXL file input because otherwise will delete original JXL file
                     if(cmd_return == 0 && attr_exit == 0 && check_delete.isSelected() && mv_target_return == 0
                             && ((extension < 0 || !infile.substring(extension, infile.length()).equals(".jxl")) || (infile.substring(extension, infile.length()).equals(".jxl") && !CJXL_source.equals(CJXL_target)))){     //if file is JXL and target and source not the same folder
-                        final_command = "\"" + CJXL_source + model.getValueAt(x, NORMAL) + "\"";
-                        ProcessBuilder del = new ProcessBuilder("cmd.exe", " /c " , "del", final_command);
-                        del.redirectErrorStream(true);
+                        
+                        Path source = Paths.get(CJXL_source + model.getValueAt(jTable1.convertRowIndexToModel(x), NORMAL));
                         try {
-                            System.out.println("Delete command : " + final_command);
-                            cmd = del.start();
-                            r = new BufferedReader(new InputStreamReader(cmd.getInputStream()));
-                                                        
-                            //Get command output
-                            while (true) {
-                                line = r.readLine();
-                                if (line == null) { break; }
-                                System.out.println(line);
-                            }
+                            
+                            System.out.println("Deleting original file");
+                            Files.delete(source);
+                            del_target_return = 0;
+                            
                         }catch (IOException e){
                                 System.out.println("An error occurred.");
                                 e.printStackTrace();
                                 del_target_return = 1;
                             }
                         
-                        del_target_return = 0;
                     } else {
                         del_target_return = 0;
                     }
@@ -620,9 +621,9 @@ public class CJXLui extends javax.swing.JFrame {
                     //Get return value and update table of success
                     if (cmd_return == 0 && attr_exit == 0 && del_target_return == 0
                             && (is_nonlatin_unicode == 0 || (is_nonlatin_unicode == 1 && mv_target_return == 0))){
-                        model.setValueAt("OK", x, 1);
+                        model.setValueAt("OK", jTable1.convertRowIndexToModel(x), 2);
                     }else {
-                        model.setValueAt("Fail", x, 1);
+                        model.setValueAt("Fail", jTable1.convertRowIndexToModel(x), 2);
                     }
                 } catch (IOException e){
                     System.out.println("An error occurred.");
